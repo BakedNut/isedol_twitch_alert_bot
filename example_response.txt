@@ -1,0 +1,4 @@
+{"data":[{"id":"******","user_id":"******","user_login":"******","user_name":"******",
+"game_id":"509658","game_name":"Just Chatting","type":"live","title":"title name","viewer_count":****,
+"started_at":"yyyy-mm-ddT11:11:11Z","language":"ko","thumbnail_url":"https://url",
+"tag_ids":["tag_id],"is_mature":false}],"pagination":{}}
