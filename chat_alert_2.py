@@ -64,11 +64,8 @@ async def run(ID):
         await asyncio.sleep(0.001)
 
 async def main():
-    try:
-        print("Ready on Notification")
-        # await asyncio.gather(isedol_alert(1)) # This line is only test
-        await asyncio.gather(run('zilioner'), run('pjs9073'))
-    except:
-        asyncio.run(main())
+    print("Ready on Notification")
+    # await asyncio.gather(isedol_alert(1)) # This line is only test
+    await asyncio.gather(run('zilioner'), run('pjs9073'))
 
 asyncio.run(main())
