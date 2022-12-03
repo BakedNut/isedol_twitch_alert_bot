@@ -29,8 +29,6 @@ isedol_krname = ('아이네', '징버거', '릴파', '주르르', '고세구', '
 
 sleeptime = 5 # 갱신 주기
 
-bot.sendMessage(chat_id=chat_id, text = "방송 제목 변경 알림봇이 (재)시작되었습니다")
-
 async def isedol_alert(mem_num):
     ment = '{}님의 방송 제목이 변경되었습니다'.format(isedol_krname[mem_num])
     check = 0
@@ -48,48 +46,31 @@ async def isedol_alert(mem_num):
             check = 0
         await asyncio.sleep(sleeptime)
     
-    print(f'(define work) current pre_title : {pre_title}')
     print(isedol_krname[mem_num] + " title change alert ready")
 
     # Check Title
     while True:
-        headers = {'client-id': twitch_client_id, 'Authorization': authorization}
-        response_channel = requests.get('https://api.twitch.tv/helix/channels?broadcaster_id=' + isedol_bc_id[mem_num], headers=headers)
-        current_title = loads(response_channel.text)['data'][0]['title']
-        # print(response_channel.text)
         try:
+            headers = {'client-id': twitch_client_id, 'Authorization': authorization}
+            response_channel = requests.get('https://api.twitch.tv/helix/channels?broadcaster_id=' + isedol_bc_id[mem_num], headers=headers)
+            current_title = loads(response_channel.text)['data'][0]['title']
             if current_title != pre_title:
                 bot.sendMessage(chat_id=chat_id, text = ment
-                                + '\n이전 방송 제목 : ' + pre_title
                                 + '\n현재 방송 제목 : ' + current_title
+                                + '\n이전 방송 제목 : ' + pre_title
                                 + '\nhttps://www.twitch.tv/' + isedol_id[mem_num])
                 pre_title = current_title
                 print(isedol_krname[mem_num] + " Title is changed")
             else:
                 print(isedol_krname[mem_num] + " Title is not changed")
         except:
-            print(isedol_krname + ' Offline')
-            check = 0
-            while check == 0:
-                try:
-                    headers = {'client-id': twitch_client_id, 'Authorization': authorization}
-                    response_channel = requests.get('https://api.twitch.tv/helix/channels?broadcaster_id=' + isedol_bc_id[mem_num], headers=headers)
-                    pre_title = loads(response_channel.text)['data'][0]['title']
-                    print(isedol_krname[mem_num] + ' pre_title define success')
-                    check = 1
-                except:
-                    print(isedol_krname[mem_num] + ' pre_title define fail... Retry')
-                    check = 0
-                await asyncio.sleep(sleeptime)
+            pass
         
         await asyncio.sleep(sleeptime)
 
 async def main():
-    try:
-        print("Ready on Notification")
-        # await asyncio.gather(isedol_alert(1)) # This line is only test
-        await asyncio.gather(isedol_alert(0), isedol_alert(1), isedol_alert(2), isedol_alert(3), isedol_alert(4), isedol_alert(5), isedol_alert(6))
-    except:
-        asyncio.run(main())
+    print("Ready on Notification")
+    # await asyncio.gather(isedol_alert(1)) # This line is only test
+    await asyncio.gather(isedol_alert(0), isedol_alert(1), isedol_alert(2), isedol_alert(3), isedol_alert(4), isedol_alert(5), isedol_alert(6))
 
 asyncio.run(main())
