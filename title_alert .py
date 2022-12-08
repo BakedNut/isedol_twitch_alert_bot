@@ -4,7 +4,7 @@ import requests
 import asyncio
 from json import loads
 
-print('ISEDOL ON-OFFLINE ALERT START')
+print('ISEDOL TITLE ALERT START')
 
 # API Authorization
 Auth = connect.twAPIAutho()
