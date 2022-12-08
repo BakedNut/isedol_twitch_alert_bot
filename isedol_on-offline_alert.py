@@ -1,7 +1,6 @@
 import telegram as tel
 import requests
 import asyncio
-import twitchAPI_authorization
 from json import loads
 
 print('ISEDOL ON-OFFLINE ALERT START')
