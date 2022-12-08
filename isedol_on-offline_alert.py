@@ -38,10 +38,10 @@ async def isedol_alert(mem_num):
     check = False
     
     while True:
-        headers = {'client-id': twitch_client_id, 'Authorization': authorization}
-        response_channel = requests.get('https://api.twitch.tv/helix/streams?user_login=' + isedol_id[mem_num], headers=headers)
-        # print(response_channel.text) 터미널 창 더러워져서 주석처리함
         try:
+            headers = {'client-id': twitch_client_id, 'Authorization': authorization}
+            response_channel = requests.get('https://api.twitch.tv/helix/streams?user_login=' + isedol_id[mem_num], headers=headers)
+            # print(response_channel.text) 터미널 창 더러워져서 주석처리함
             if loads(response_channel.text)['data'][0]['type'] == 'live' and check == False:
                 bot.sendMessage(chat_id=chat_id, text = ment
                                 + '\n방송제목 : ' + loads(response_channel.text)['data'][0]['title']
