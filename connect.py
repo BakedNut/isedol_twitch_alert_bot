@@ -7,6 +7,7 @@ import telegram as tel
 class twAPIAutho():
     id = '' # twitch_client_id 입력
     secret = '' # twitch_client_secret 입력
+    OAuth = "oauth:xxxxxxxx"
     def start(self):
         self.oauth_key = requests.post("https://id.twitch.tv/oauth2/token?client_id=" + twAPIAutho.id + "&client_secret=" + twAPIAutho.secret + "&grant_type=client_credentials")
         self.access_token = loads(self.oauth_key.text)["access_token"]
