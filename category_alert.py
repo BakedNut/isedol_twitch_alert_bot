@@ -73,5 +73,5 @@ async def main():
     await asyncio.gather(isedol_alert(0), isedol_alert(1), isedol_alert(2), isedol_alert(3), isedol_alert(4), isedol_alert(5), isedol_alert(6))
 
 # Start
-if '__name__' == '__main__':
+if __name__ == '__main__':
     asyncio.run(main())

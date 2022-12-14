@@ -79,5 +79,5 @@ def run(ID):
                 IRC.send(message)
                 print("Sent a PONG")
 
-if '__name__' == '__main__':
+if __name__ == '__main__':
     run(selID)
