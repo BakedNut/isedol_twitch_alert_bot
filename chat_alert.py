@@ -19,7 +19,7 @@ async def run(ID):
     PORT = 6667
     IRCread: asyncio.StreamReader
     IRCwrite: asyncio.StreamWriter
-    PASSWORD = connect.Autho.OAuth  # This needs to be an OAuth token
+    PASSWORD = connect.twAPIAutho.OAuth  # This needs to be an OAuth token
     USERNAME = ID # Connect This Channel ID
     CHANNEL = USERNAME
     Connecting = True
