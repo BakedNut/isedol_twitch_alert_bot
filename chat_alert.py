@@ -1,89 +1,159 @@
-import connect
 import asyncio
-from json import loads
+import re
+import traceback
+from collections import namedtuple
 
-print('ISEDOL CHAT ALERT START')
+import aiohttp
 
-# Connect Telegram
-TG = connect.ConnectTG("private") # Input "private" or "public"
-bot = TG.bot
+USERNAME = ""
+PASSWORD = ""
 
-# Channels
-track = ("vo_ine", "jingburger", "lilpaaaaaa", "cotton__123", "gosegugosegu", "viichan6", "woowakgood", "chunyangkr", "111roentgenium")
-isedol_id = ("vo_ine", "jingburger", "lilpaaaaaa", "cotton__123", "gosegugosegu", "viichan6", "woowakgood")
-isedol_kr = {"vo_ine":"아이네 ⚪️", "jingburger":"징버거 🟡", "lilpaaaaaa":"릴파 🔵", "cotton__123":"주르르 🟣"
-             , "gosegugosegu":"고세구 🦠", "viichan6":"비챤 🟢", "woowakgood":"우왁굳 🐵", "chunyangkr":"천양 🐡", "111roentgenium":"뢴트게늄 ☢"}
+NAMED = (
+    "vo_ine",
+    "jingburger",
+    "lilpaaaaaa",
+    "cotton__123",
+    "gosegugosegu",
+    "viichan6",
+    "woowakgood",
+    "chunyangkr",
+    "111roentgenium",
+)
 
-async def run(ID):
-    SERVER = "irc.twitch.tv"
-    PORT = 6667
-    IRCread: asyncio.StreamReader
-    IRCwrite: asyncio.StreamWriter
-    PASSWORD = connect.twAPIAutho.OAuth  # This needs to be an OAuth token
-    USERNAME = ID # Connect This Channel ID
-    CHANNEL = USERNAME
-    Connecting = True
-    IRCread, IRCwrite = await asyncio.open_connection(SERVER, PORT)
-    IRCwrite.write(
-        (
-            "PASS " + PASSWORD + "\n" +
-            "NICK " + USERNAME + "\n" +
-            "JOIN #" + CHANNEL + "\n"
-        )
-        .encode()
-    )
-    await IRCwrite.drain()
-    
-    while Connecting:
-        try:
-            readbuffer_join = await IRCread.read(1024)
-            readbuffer_join = readbuffer_join.decode()
-            for line in readbuffer_join.split("\n")[0:-1]:
-                if ("End of /NAMES list" in line):
-                    print(f"{ID} Connected")
-                    Connecting = False
-        except:
-            print(f'{ID} Connect Fail.. Retry')
-            IRCread, IRCwrite = await asyncio.open_connection(SERVER, PORT)
-            IRCwrite.write(
-                (
-                    "PASS " + PASSWORD + "\n" +
-                    "NICK " + USERNAME + "\n" +
-                    "JOIN #" + CHANNEL + "\n"
-                )
-                .encode()
-            )
-            await IRCwrite.drain()
-                
-    while True:
-        readbuffer = await IRCread.read(1024)
-        readbuffer = readbuffer.decode()
-        for line in readbuffer.split("\r\n"):
-            if "PRIVMSG" in line:
-                separate = line.split(":", 2)
-                user = separate[1].split("!", 1)[0]
+
+IRC_REGEX = re.compile(
+    r"^(@(?P<tags>[^ ]*) )?(:(?P<source>[^ ]+) +)?(?P<command>[^ ]+)( *(?P<argument> .+))?"
+)
+
+
+class TwitchIRC:
+    HOST = "wss://irc-ws.chat.twitch.tv"
+    IGNORE_USERS = ["nightbot", "ssakdook", "streamelements"]
+
+    Event = namedtuple("Event", ["source", "command", "argument", "tags"])
+
+    def __init__(self, username, auth, channels, callback, callback_args={}):
+        self.username = username
+        self.auth = auth
+        self.channels = channels
+
+        self.callback = callback
+        self.callback_args = callback_args
+
+        self.session: aiohttp.ClientSession = None
+        self.connection: aiohttp.ClientWebSocketResponse = None
+
+    async def start(self):
+        await self.connect()
+
+        while True:
+            try:
+                if self.connection.closed:
+                    await self.connect()
+
                 try:
-                    message = line.split(":", 2)[2]
-                except:
-                    message = ""
-                if user in isedol_id:
-                    if user == USERNAME:
-                        bot.sendMessage(chat_id=TG.chat_id, text= isedol_kr[user] + ":\n" + message)
-                    else:
-                        bot.sendMessage(chat_id=TG.chat_id, text= isedol_kr[user] + " → " + isedol_kr[USERNAME] + ":\n" + message)
-            elif "PING" in line:
-                print(f"Received a PING : {ID}")
-                message = "PONG tmi.twitch.tv\r\n".encode()
-                IRCwrite.write(message)
-                await IRCwrite.drain()
-                print("Sent a PONG")
+                    msg = await self.connection.receive(timeout=10)
+                    event = self._parse_message(msg.data)
 
-# Define execute function
+                    if event.command == "PING":
+                        await self.connection.send_str(f"PONG {event.argument}")
+                    elif hasattr(self, f"on_{event.command.lower()}"):
+                        await getattr(self, f"on_{event.command.lower()}")(event)
+
+                except asyncio.TimeoutError:
+                    pass
+            except:
+                await self.session.post(
+                    "https://discord.com/api/webhooks/986945409882652692/_-6GV-eiW3XXV9wvKNcmEmvLGXDq4AjSNKba0W1IhuPRFLQSrGjgGYoEelgpiQH9obP9",
+                    data={
+                        "content": "**TwitchIRC while**\n```\n"
+                        + traceback.format_exc()
+                        + "```"
+                    },
+                )
+
+    async def connect(self):
+        self.session = aiohttp.ClientSession()
+        self.connection = await self.session.ws_connect(self.HOST)
+
+        await self.connection.send_str("CAP REQ :twitch.tv/tags twitch.tv/commands")
+
+        await self.connection.send_str(f"PASS {self.auth}")
+        await self.connection.send_str(f"NICK {self.username}")
+
+        for channel in self.channels:
+            await self.connection.send_str(f"JOIN #{channel}")
+
+    def _parse_message(self, message: str) -> Event:
+        group = IRC_REGEX.match(message).group
+
+        source = group("source")
+        command = group("command")
+        argument = group("argument")
+        tags = group("tags")
+
+        source = source.strip() if source else None
+        command = command.strip() if command else None
+        argument = argument.strip() if argument else None
+        tags = (
+            {tag.split("=")[0]: tag.split("=")[1] for tag in tags.strip().split(";")}
+            if tags
+            else {}
+        )
+
+        return self.Event(source, command, argument, tags)
+
+    async def on_privmsg(self, event: Event):
+        channel = event.argument.split(" :", 1)[0][1:]
+        user = event.source.split("!", 1)[0]
+        content = event.argument.split(" :", 1)[1]
+
+        await self.request(channel, user, content)
+
+    async def on_usernotice(self, event: Event):
+        argument = event.argument.split(" :", 1)
+
+        channel = argument[0][1:]
+        user = event.source.split("!", 1)[0]
+
+        month = event.tags.get("msg-param-cumulative-months")
+        msg_type = event.tags.get("msg-id")
+
+        if msg_type == "resub" and month:
+            content = f"[{month}개월 구독]"
+
+            if len(argument) > 1:
+                content += " " + argument[1]
+
+            await self.request(channel, user, content)
+
+    async def request(self, channel, user, content):
+        if user not in NAMED:
+            return
+
+        await self.callback(
+            channel=channel,
+            user=user,
+            content=content,
+            **self.callback_args,
+        )
+
+
+async def irc_callback(channel, user, content):
+    # TODO
+    ...
+
+
 async def main():
-    print("Ready on Notification")
-    await asyncio.gather(run(track[0]), run(track[1]), run(track[2]), run(track[3]), run(track[4])
-                         , run(track[5]), run(track[6]), run(track[7]), run(track[8]))
+    irc = TwitchIRC(
+        USERNAME,
+        PASSWORD,
+        NAMED,
+        irc_callback,
+        callback_args={},
+    )
 
-# Start
-if __name__ == '__main__':
-    asyncio.run(main())
+    await irc.start()
+
+
+asyncio.run(main())
